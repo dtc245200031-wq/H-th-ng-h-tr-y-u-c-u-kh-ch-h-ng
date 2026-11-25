@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="SupportApi\SupportApi.csproj" />
+  <Project Path="SupportConsole\SupportConsole.csproj" />
+</Solution>

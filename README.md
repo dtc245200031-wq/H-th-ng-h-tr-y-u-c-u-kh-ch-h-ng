@@ -20,3 +20,8 @@ dotnet run --project .\SupportConsole\SupportConsole.csproj -- http://localhost:
 
 `POST /tickets` tạo yêu cầu mới. Dữ liệu bắt buộc: `requesterId`, `subject`,
 `description`. Yêu cầu mới có trạng thái `New`.
+
+## Tra cứu yêu cầu
+
+- `GET /tickets` trả về danh sách yêu cầu.
+- `GET /tickets/{id}` trả về chi tiết theo mã, hoặc `404` nếu không tồn tại.

@@ -31,6 +31,13 @@ app.MapPost("/tickets", async (
     return Results.Created($"/tickets/{ticket.Id}", ticket);
 });
 
+app.MapGet("/tickets", (TicketStore store) => Results.Ok(store.GetAll()));
+
+app.MapGet("/tickets/{id:int}", (int id, TicketStore store) =>
+    store.TryGet(id, out var ticket)
+        ? Results.Ok(ticket)
+        : Results.NotFound(new { message = $"Không tìm thấy yêu cầu {id}." }));
+
 app.Run();
 
 public sealed class TicketHub : Hub;
@@ -68,23 +75,51 @@ public sealed record TicketHistoryEntry(
 public sealed class TicketStore
 {
     private readonly ConcurrentDictionary<int, Ticket> _tickets = new();
+    private readonly object _gate = new();
     private int _nextId;
 
     public Ticket Create(CreateTicketRequest request)
     {
-        var now = DateTimeOffset.UtcNow;
-        var ticket = new Ticket
+        lock (_gate)
         {
-            Id = Interlocked.Increment(ref _nextId),
-            RequesterId = request.RequesterId.Trim(),
-            Subject = request.Subject.Trim(),
-            Description = request.Description.Trim(),
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-        ticket.History.Add(new TicketHistoryEntry(now, TicketStatus.New, null, "Created"));
-        _tickets[ticket.Id] = ticket;
-        return Clone(ticket);
+            var now = DateTimeOffset.UtcNow;
+            var ticket = new Ticket
+            {
+                Id = Interlocked.Increment(ref _nextId),
+                RequesterId = request.RequesterId.Trim(),
+                Subject = request.Subject.Trim(),
+                Description = request.Description.Trim(),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            ticket.History.Add(new TicketHistoryEntry(now, TicketStatus.New, null, "Created"));
+            _tickets[ticket.Id] = ticket;
+            return Clone(ticket);
+        }
+    }
+
+    public IReadOnlyList<Ticket> GetAll()
+    {
+        lock (_gate)
+            return _tickets.Values
+                .OrderByDescending(ticket => ticket.CreatedAt)
+                .Select(Clone)
+                .ToList();
+    }
+
+    public bool TryGet(int id, out Ticket? ticket)
+    {
+        lock (_gate)
+        {
+            if (_tickets.TryGetValue(id, out var found))
+            {
+                ticket = Clone(found);
+                return true;
+            }
+
+            ticket = null;
+            return false;
+        }
     }
 
     private static Ticket Clone(Ticket source)

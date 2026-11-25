@@ -10,6 +10,7 @@ while (true)
     Console.WriteLine("1. Tạo yêu cầu hỗ trợ");
     Console.WriteLine("2. Tra cứu danh sách/chi tiết yêu cầu");
     Console.WriteLine("3. Đưa yêu cầu mới vào queue");
+    Console.WriteLine("4. Worker gán yêu cầu cho nhân viên xử lý");
     Console.WriteLine("0. Thoát");
     Console.Write("Chọn chức năng: ");
 
@@ -23,6 +24,9 @@ while (true)
             break;
         case "3":
             await QueueTicketAsync();
+            break;
+        case "4":
+            await AssignTicketAsync();
             break;
         case "0":
             return;
@@ -74,5 +78,21 @@ async Task QueueTicketAsync()
     }
 
     using var response = await client.PostAsync($"/tickets/{id}/queue", null);
+    Console.WriteLine(await response.Content.ReadAsStringAsync());
+}
+
+async Task AssignTicketAsync()
+{
+    Console.Write("Mã yêu cầu: ");
+    if (!int.TryParse(Console.ReadLine(), out var id))
+    {
+        Console.WriteLine("Mã yêu cầu không hợp lệ.");
+        return;
+    }
+
+    Console.Write("AssigneeId: ");
+    var assigneeId = Console.ReadLine() ?? "";
+    using var response = await client.PostAsJsonAsync($"/tickets/{id}/assign",
+        new { assigneeId });
     Console.WriteLine(await response.Content.ReadAsStringAsync());
 }

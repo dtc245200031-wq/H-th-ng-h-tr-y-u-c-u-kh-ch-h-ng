@@ -51,11 +51,29 @@ app.MapPost("/tickets/{id:int}/queue", async (
     return Results.Accepted($"/tickets/{ticket.Id}", ticket);
 });
 
+app.MapPost("/tickets/{id:int}/assign", async (
+    int id,
+    AssignTicketRequest request,
+    TicketStore store,
+    IHubContext<TicketHub> hub) =>
+{
+    if (string.IsNullOrWhiteSpace(request.AssigneeId))
+        return Results.BadRequest(new { message = "AssigneeId là bắt buộc." });
+
+    var ticket = store.Assign(id, request.AssigneeId);
+    if (ticket is null)
+        return Results.NotFound(new { message = $"Không tìm thấy yêu cầu {id}." });
+
+    await hub.Clients.All.SendAsync("TicketUpdated", ticket);
+    return Results.Ok(ticket);
+});
+
 app.Run();
 
 public sealed class TicketHub : Hub;
 
 public sealed record CreateTicketRequest(string RequesterId, string Subject, string Description);
+public sealed record AssignTicketRequest(string AssigneeId);
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum TicketStatus
@@ -150,6 +168,26 @@ public sealed class TicketStore
                 TicketStatus.New,
                 ticket.AssigneeId,
                 "Added to support queue"));
+            return Clone(ticket);
+        }
+    }
+
+    public Ticket? Assign(int id, string assigneeId)
+    {
+        lock (_gate)
+        {
+            if (!_tickets.TryGetValue(id, out var ticket))
+                return null;
+
+            var now = DateTimeOffset.UtcNow;
+            ticket.AssigneeId = assigneeId.Trim();
+            ticket.Status = TicketStatus.Assigned;
+            ticket.UpdatedAt = now;
+            ticket.History.Add(new TicketHistoryEntry(
+                now,
+                TicketStatus.Assigned,
+                ticket.AssigneeId,
+                "Assigned"));
             return Clone(ticket);
         }
     }

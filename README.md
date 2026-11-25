@@ -29,3 +29,7 @@ dotnet run --project .\SupportConsole\SupportConsole.csproj -- http://localhost:
 ## Đưa yêu cầu vào queue
 
 `POST /tickets/{id}/queue` đưa yêu cầu hiện có vào hàng chờ xử lý.
+
+## Gán nhân viên xử lý
+
+`POST /tickets/{id}/assign` gán yêu cầu cho nhân viên theo `assigneeId` và cập nhật trạng thái thành `Assigned`.

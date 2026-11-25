@@ -9,6 +9,7 @@ while (true)
     Console.WriteLine("=== HỆ THỐNG HỖ TRỢ YÊU CẦU KHÁCH HÀNG ===");
     Console.WriteLine("1. Tạo yêu cầu hỗ trợ");
     Console.WriteLine("2. Tra cứu danh sách/chi tiết yêu cầu");
+    Console.WriteLine("3. Đưa yêu cầu mới vào queue");
     Console.WriteLine("0. Thoát");
     Console.Write("Chọn chức năng: ");
 
@@ -19,6 +20,9 @@ while (true)
             break;
         case "2":
             await QueryTicketsAsync();
+            break;
+        case "3":
+            await QueueTicketAsync();
             break;
         case "0":
             return;
@@ -58,4 +62,17 @@ async Task QueryTicketsAsync()
 
     using var listResponse = await client.GetAsync("/tickets");
     Console.WriteLine(await listResponse.Content.ReadAsStringAsync());
+}
+
+async Task QueueTicketAsync()
+{
+    Console.Write("Mã yêu cầu: ");
+    if (!int.TryParse(Console.ReadLine(), out var id))
+    {
+        Console.WriteLine("Mã yêu cầu không hợp lệ.");
+        return;
+    }
+
+    using var response = await client.PostAsync($"/tickets/{id}/queue", null);
+    Console.WriteLine(await response.Content.ReadAsStringAsync());
 }

@@ -25,3 +25,7 @@ dotnet run --project .\SupportConsole\SupportConsole.csproj -- http://localhost:
 
 - `GET /tickets` trả về danh sách yêu cầu.
 - `GET /tickets/{id}` trả về chi tiết theo mã, hoặc `404` nếu không tồn tại.
+
+## Đưa yêu cầu vào queue
+
+`POST /tickets/{id}/queue` đưa yêu cầu hiện có vào hàng chờ xử lý.

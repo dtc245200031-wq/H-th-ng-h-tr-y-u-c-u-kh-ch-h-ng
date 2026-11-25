@@ -38,6 +38,19 @@ app.MapGet("/tickets/{id:int}", (int id, TicketStore store) =>
         ? Results.Ok(ticket)
         : Results.NotFound(new { message = $"Không tìm thấy yêu cầu {id}." }));
 
+app.MapPost("/tickets/{id:int}/queue", async (
+    int id,
+    TicketStore store,
+    IHubContext<TicketHub> hub) =>
+{
+    var ticket = store.Queue(id);
+    if (ticket is null)
+        return Results.NotFound(new { message = $"Không tìm thấy yêu cầu {id}." });
+
+    await hub.Clients.All.SendAsync("TicketUpdated", ticket);
+    return Results.Accepted($"/tickets/{ticket.Id}", ticket);
+});
+
 app.Run();
 
 public sealed class TicketHub : Hub;
@@ -119,6 +132,25 @@ public sealed class TicketStore
 
             ticket = null;
             return false;
+        }
+    }
+
+    public Ticket? Queue(int id)
+    {
+        lock (_gate)
+        {
+            if (!_tickets.TryGetValue(id, out var ticket))
+                return null;
+
+            var now = DateTimeOffset.UtcNow;
+            ticket.Status = TicketStatus.New;
+            ticket.UpdatedAt = now;
+            ticket.History.Add(new TicketHistoryEntry(
+                now,
+                TicketStatus.New,
+                ticket.AssigneeId,
+                "Added to support queue"));
+            return Clone(ticket);
         }
     }
 
